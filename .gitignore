@@ -8,7 +8,9 @@ test-data/
 models/
 .ipynb_checkpoints/
 __pycache__/
+notebooks/
 
 # IDE
 pyrightconfig.json
 .ropeproject/
+.DS_Store
