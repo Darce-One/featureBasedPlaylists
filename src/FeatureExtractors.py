@@ -259,6 +259,7 @@ class EmotionExtractor(FeatureExtractor):
         predictions = self.model(embeddings).mean(axis=0)
         return self._get_arousal_valence(predictions)
 
+
 class MSDMusicCNNExtractor(FeatureExtractor):
     feature_name = "MSD-MusicCNN-Embeddings"
 

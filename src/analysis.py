@@ -32,16 +32,14 @@ class FeatureCalculator:
         self.audio_loader = es.AudioLoader()
         self.extractors = extractors
 
-    def get_audio(self, audio_file_path: str) -> (np.ndarray):
+    def get_audio(self, audio_file_path: str) -> np.ndarray:
         self.audio_loader.configure(filename=audio_file_path)
         stereo_44100 = self.audio_loader()[0]
         return stereo_44100
 
     def extract_features(self, audio_file_path: str):
         stereo_audio = self.get_audio(audio_file_path)
-        feature_dict = {
-            "audio_file": audio_file_path
-        }
+        feature_dict = {"audio_file": audio_file_path}
         for extractor in self.extractors:
             # Extract feature using the extractor's extract method
             feature_result = extractor.extract(stereo_audio)
@@ -52,19 +50,16 @@ class FeatureCalculator:
         return feature_dict
 
 
-
-
 class AudioFeatureDatabase:
     def __init__(self, json_path: str):
         """Initializes the database with a path to the JSON file."""
         self.json_path = json_path
         self.data = self.load_data(json_path)
 
-
     @staticmethod
     def get_mp3_files(dataset_path: str) -> List[Path]:
         dataset_path_object = Path(dataset_path)
-        mp3_files = list(dataset_path_object.rglob('*.mp3'))
+        mp3_files = list(dataset_path_object.rglob("*.mp3"))
         return mp3_files
 
     def process_dataset(self, feature_calculator: FeatureCalculator, dataset_path: str):
@@ -73,7 +68,9 @@ class AudioFeatureDatabase:
         print("mp3: ", self.mp3_paths)
 
         for mp3_file in tqdm(self.mp3_paths):
-            features = self.feature_calculator.extract_features(audio_file_path=str(mp3_file.absolute()))
+            features = self.feature_calculator.extract_features(
+                audio_file_path=str(mp3_file.absolute())
+            )
             self.add_audio_features(str(mp3_file.name), features)
 
     def load_data(self, json_path):
@@ -117,7 +114,7 @@ def main():
         DanceabilityExtractor(),
         EmotionExtractor(),
         DiscogsEffnetExtractor(),
-        MSDMusicCNNExtractor()
+        MSDMusicCNNExtractor(),
     ]
 
     fc = FeatureCalculator(extractors)
@@ -126,16 +123,16 @@ def main():
 
 
 def test():
-    extractors = [
-        DiscogsEffnetExtractor(),
-        MSDMusicCNNExtractor()
-    ]
+    extractors = [DiscogsEffnetExtractor(), MSDMusicCNNExtractor()]
 
     fc = FeatureCalculator(extractors)
 
-    features = fc.extract_features("test-data/audio_chunks/audio.000/0B/0BJPGg90E6p2Ve0D8EcZGF.mp3")
+    features = fc.extract_features(
+        "test-data/audio_chunks/audio.000/0B/0BJPGg90E6p2Ve0D8EcZGF.mp3"
+    )
     print(features["Discogs-Effnet-Embeddings"].shape)
     print(features["MSD-MusicCNN-Embeddings"].shape)
+
 
 if __name__ == "__main__":
     main()
