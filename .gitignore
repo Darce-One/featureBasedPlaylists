@@ -1,4 +1,14 @@
-*.json
+# file formats
 *.mp3
-MusAV/
 *.pdf
+
+# folders
+MusAV/
+test-data/
+models/
+.ipynb_checkpoints/
+__pycache__/
+
+# IDE
+pyrightconfig.json
+.ropeproject/
