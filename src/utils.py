@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.metrics.pairwise import cosine_distances
 
 
 # Plot a histogram for genre counts
@@ -311,3 +312,25 @@ def plot_key_scale_distribution(
     # Adjust plot to fit labels
     plt.tight_layout()
     plt.show()
+
+
+def get_top_n_embedding_indices(
+    dataframe, reference_vector, embedding_column="embedding", top_n=10
+):
+    # Validate that reference_vector is a 1D numpy array
+    if not isinstance(reference_vector, np.ndarray) or reference_vector.ndim != 1:
+        raise ValueError("reference_vector should be a 1D numpy array")
+
+    # Convert the embeddings from the DataFrame into a NumPy array for efficient computation
+    embeddings = np.array(dataframe[embedding_column].tolist())
+
+    # Calculate the cosine distances
+    distances = cosine_distances(embeddings, reference_vector.reshape(1, -1)).flatten()
+
+    # Get the indices of the top N smallest distances
+    top_n_indices = np.argsort(distances)[:top_n]
+
+    # Convert the integer indices to the DataFrame's index
+    closest_indices = dataframe.index[top_n_indices]
+
+    return closest_indices

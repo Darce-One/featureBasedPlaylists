@@ -3,9 +3,12 @@ import streamlit as st
 import pandas
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-
+from utils import get_top_n_embedding_indices
+import numpy as np
 
 m3u_filepaths_file = "playlists/streamlit.m3u4"
+effnet_similar_m3u_file = "playlists/Effnet_similar_tracks_playlist.m3u"
+cnn_similar_m3u_file = "playlists/Cnn_similar_tracks_playlist.m3u"
 ESSENTIA_ANALYSIS_PATH = "data/audio_features.pkl"
 
 
@@ -42,8 +45,8 @@ danceability_select_range = (0.0, 1.0)
 loudness_select_range = (-20.0, -4.0)
 arousal_select_range = (0.0, 9.0)
 valence_select_range = (0.0, 9.0)
-scale_select = ['major', 'minor']
-instrumentation_select = ['voice', 'instrumental']
+scale_select = ["major", "minor"]
+instrumentation_select = ["voice", "instrumental"]
 
 # Initial ranges and session state setup
 if "bpm_select_range" not in st.session_state:
@@ -131,14 +134,16 @@ if "Loudness" in feature_select:
     )
 
 if "Scale" in feature_select:
-    scale_select = st.multiselect("select scales",
-        ['major', 'minor'],
-        default=st.session_state.scale_select)
+    scale_select = st.multiselect(
+        "select scales", ["major", "minor"], default=st.session_state.scale_select
+    )
 
 if "Instrumentation" in feature_select:
-    instrumentation_select = st.multiselect("select instrumentation",
-        ['voice', 'instrumental'],
-        default=st.session_state.instrumentation_select)
+    instrumentation_select = st.multiselect(
+        "select instrumentation",
+        ["voice", "instrumental"],
+        default=st.session_state.instrumentation_select,
+    )
 
 
 # Filter the DataFrame based on selections
@@ -245,12 +250,14 @@ arousal_select_range = st.slider(
 filtered_audio_analysis = filtered_audio_analysis[
     (
         audio_analysis["Valence"].between(
-            valence_select_range[0], valence_select_range[1]
+            st.session_state.valence_select_range[0],
+            st.session_state.valence_select_range[1],
         )
     )
     & (
         audio_analysis["Arousal"].between(
-            arousal_select_range[0], arousal_select_range[1]
+            st.session_state.arousal_select_range[0],
+            st.session_state.arousal_select_range[1],
         )
     )
 ]
@@ -264,7 +271,11 @@ mp3s = []
 # Button part!
 if st.button("RUN") or st.session_state.button_pressed:
     st.session_state.button_pressed = True
-    st.write("## 🔊 Results")
+    st.write("# 🔊 Results")
+    st.write("## Feature-Based playlist")
+    st.write(
+        "Here you'll find 10 song previews that match your inputs. Don't worry, all the tracks that match are saved in a playlist file."
+    )
 
     # Retrieve paths from the filtered DataFrame
     if "Path" in filtered_audio_analysis.columns:
@@ -293,7 +304,7 @@ if st.button("RUN") or st.session_state.button_pressed:
         st.write("No tracks found based on the current filter criteria.")
 
     if mp3s:
-        st.write("## Detailed Track Information")
+        st.write("## Similarity-based Playlists")
         if "selected_index" not in st.session_state:
             st.session_state.selected_index = 1  # Default to the first track
         # Create a dictionary that maps integer indices to track file paths
@@ -316,10 +327,92 @@ if st.button("RUN") or st.session_state.button_pressed:
 
         # Display the features of the selected track
         if not track_features.empty:
-            st.write(
-                f"### Features for the selected track (Track #{st.session_state.selected_index}):"
+            effnet_embedding = track_features["Discogs Effnet Embeddings"].iloc[0]
+            cnn_embedding = track_features["MSD MusicCNN Embeddings"].iloc[0]
+
+            # Check if it's already a NumPy array, if not, convert it
+            if isinstance(cnn_embedding, list):
+                cnn_embedding = np.array(cnn_embedding)
+
+            if isinstance(effnet_embedding, list):
+                effnet_embedding = np.array(effnet_embedding)
+
+            closest_indices_Effnet = get_top_n_embedding_indices(
+                audio_analysis,
+                effnet_embedding,
+                embedding_column="Discogs Effnet Embeddings",
+                top_n=10,
             )
-            st.write(track_features.T)  # Transpose to display features vertically
+            closest_indices_Cnn = get_top_n_embedding_indices(
+                audio_analysis,
+                cnn_embedding,
+                embedding_column="MSD MusicCNN Embeddings",
+                top_n=10,
+            )
+
+            # Retrieve paths and create audio players for the closest songs Effnet
+            if "Path" in audio_analysis.columns:
+                st.write("## Effnet-Discogs similarity playlist")
+                closest_tracks_paths = audio_analysis.iloc[closest_indices_Effnet][
+                    "Path"
+                ].tolist()
+
+                if closest_tracks_paths:
+                    st.write(
+                        f"Here are the audio previews for the 10 most similar songs to Track #{st.session_state.selected_index} according to cosine distance of the effnet embeddings:"
+                    )
+
+                    for idx, path in enumerate(closest_tracks_paths):
+                        st.write(f"Similar Track {idx + 1}:")
+                        st.audio(path, format="audio/mp3", start_time=0)
+
+                    with open(effnet_similar_m3u_file, "w") as f:
+                        # Store relative mp3 paths in the playlist.
+                        similar_mp3_paths = [
+                            os.path.join("..", mp3) for mp3 in closest_tracks_paths
+                        ]
+                        f.write("\n".join(similar_mp3_paths))
+
+                    st.write(
+                        f"Stored similar tracks M3U playlist (local filepaths) to `{effnet_similar_m3u_file}`."
+                    )
+                else:
+                    st.write("No paths found for the closest tracks.")
+
+            # Retrieve paths and create audio players for the closest songs MusicCnn
+            if "Path" in audio_analysis.columns:
+                st.write("## MSD-MusicCNN similarity playlist")
+                closest_tracks_paths = audio_analysis.iloc[closest_indices_Cnn][
+                    "Path"
+                ].tolist()
+
+                if closest_tracks_paths:
+                    st.write(
+                        f"Here are the audio previews for the 10 most similar songs to Track #{st.session_state.selected_index} by cosine distance of the MSD-MusicCnn embeddings:"
+                    )
+
+                    for idx, path in enumerate(closest_tracks_paths):
+                        st.write(f"Similar Track {idx + 1}:")
+                        st.audio(path, format="audio/mp3", start_time=0)
+
+                    with open(cnn_similar_m3u_file, "w") as f:
+                        # Store relative mp3 paths in the playlist.
+                        similar_mp3_paths = [
+                            os.path.join("..", mp3) for mp3 in closest_tracks_paths
+                        ]
+                        f.write("\n".join(similar_mp3_paths))
+
+                    st.write(
+                        f"Stored similar tracks M3U playlist (local filepaths) to `{cnn_similar_m3u_file}`."
+                    )
+                else:
+                    st.write("No paths found for the closest tracks.")
+
+            else:
+                st.write(
+                    "Error: No 'Path' column found for audio files in the dataset."
+                )
+
         else:
             st.write("Could not find the features for the selected track.")
 else:
