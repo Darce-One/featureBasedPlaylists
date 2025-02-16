@@ -1,0 +1,43 @@
+{
+  "0DtX3R3GvJddY3d05z67mC.mp3": {
+    "audio_file": "/Users/andreas/Developer/UPF/AMPlab/essentiaAssignment/test-data/audio_chunks/audio.000/0d/0DtX3R3GvJddY3d05z67mC.mp3",
+    "Bpm": {
+      "bpm_re": 107.79328918457031,
+      "bpm_cnn": 107.0
+    },
+    "Key": {
+      "key_temperley": "Bb",
+      "key_krumhansl": "F",
+      "key_edma": "F",
+      "scale_temperley": "major",
+      "scale_krumhansl": "major",
+      "scale_edma": "major",
+      "scale": "major"
+    },
+    "Loudness": -10.452861785888672,
+    "Effnet-Discogs-features": {
+      "main_genre": "Latin",
+      "sub_genre": "Norte\u00f1o",
+      "danceability": 0.8374112248420715,
+      "vocal-instrumental": "voice",
+      "effnet-discogs-embeddings": [
+        0.04307341203093529,
+        -0.08869386464357376,
+        ...,
+        -0.0034252339974045753,
+        0.026930874213576317
+      ]
+    },
+    "MSD-MusicCNN-features": {
+      "music-cnn-embeddings": [
+        1.9578831195831299,
+        -2.71830677986145,
+        ...,
+        2.3115768432617188,
+        1.1639505624771118
+      ],
+      "valence": 5.983709335327148,
+      "arousal": 5.363061904907227
+    }
+  }
+}

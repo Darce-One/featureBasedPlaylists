@@ -1,7 +1,6 @@
 # file formats
 *.mp3
 *.pdf
-example_features.json
 
 # folders
 MusAV/
@@ -15,3 +14,9 @@ notebooks/
 pyrightconfig.json
 .ropeproject/
 .DS_Store
+
+# files:
+assignment_instructions.md
+data/files_audio
+data/files_essentia_effnet-discogs.jsonl
+data/files_essentia_effnet-discogs.jsonl.pickle
