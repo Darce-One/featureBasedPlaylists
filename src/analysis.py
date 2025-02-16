@@ -1,25 +1,29 @@
-import os, json
-import essentia
-import numpy as np
-from typing import List
-import essentia.standard as es
-from tqdm import tqdm
+import json
+import os
 from pathlib import Path
+from typing import List
+
+import essentia
+import essentia.standard as es
+import numpy as np
+from tqdm import tqdm
+
 from FeatureExtractors import (
-    FeatureExtractor,
     BpmExtractor,
+    DanceabilityExtractor,
+    UnifiedMSDMusicCNNExtractor,
+    EmotionExtractor,
+    FeatureExtractor,
+    GenreExtractor,
     KeyExtractor,
     LoudnessExtactor,
-    GenreExtractor,
-    DanceabilityExtractor,
-    EmotionExtractor,
-    DiscogsEffnetExtractor,
-    MSDMusicCNNExtractor,
+    UnifiedEffnetDiscogsExtractor,
 )
-
 
 DATASET_PATH = "MusAV/"
 # DATASET_PATH = "test-data/"
+JSON_SAVE_PATH = "audio_features.json"
+# JSON_SAVE_PATH = "audio_features_test.json"
 
 
 class FeatureCalculator:
@@ -65,7 +69,6 @@ class AudioFeatureDatabase:
     def process_dataset(self, feature_calculator: FeatureCalculator, dataset_path: str):
         self.feature_calculator = feature_calculator
         self.mp3_paths = self.get_mp3_files(dataset_path)
-        print("mp3: ", self.mp3_paths)
 
         for mp3_file in tqdm(self.mp3_paths):
             features = self.feature_calculator.extract_features(
@@ -104,17 +107,17 @@ class AudioFeatureDatabase:
 
 # Example usage:
 def main():
-    db = AudioFeatureDatabase(json_path="audio_features.json")
+    db = AudioFeatureDatabase(json_path=JSON_SAVE_PATH)
 
     extractors = [
         BpmExtractor(),
         KeyExtractor(),
         LoudnessExtactor(),
-        GenreExtractor(),
-        DanceabilityExtractor(),
-        EmotionExtractor(),
-        DiscogsEffnetExtractor(),
-        MSDMusicCNNExtractor(),
+        # GenreExtractor(),
+        # DanceabilityExtractor(),
+        # EmotionExtractor(),
+        UnifiedEffnetDiscogsExtractor(),
+        UnifiedMSDMusicCNNExtractor(),
     ]
 
     fc = FeatureCalculator(extractors)
@@ -123,15 +126,18 @@ def main():
 
 
 def test():
-    extractors = [DiscogsEffnetExtractor(), MSDMusicCNNExtractor()]
+    extractors = [
+        UnifiedEffnetDiscogsExtractor(),
+        UnifiedMSDMusicCNNExtractor(),
+        KeyExtractor(),
+    ]
 
     fc = FeatureCalculator(extractors)
 
     features = fc.extract_features(
         "test-data/audio_chunks/audio.000/0B/0BJPGg90E6p2Ve0D8EcZGF.mp3"
     )
-    print(features["Discogs-Effnet-Embeddings"].shape)
-    print(features["MSD-MusicCNN-Embeddings"].shape)
+    print(features)
 
 
 if __name__ == "__main__":

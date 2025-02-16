@@ -1,13 +1,14 @@
-from typing import Any, Dict, List, Tuple
-import essentia
 import json
+from typing import Any, Dict, Tuple
+
+import essentia
 import essentia.standard as es
+import numpy as np
 from essentia.standard import (
-    TensorflowPredictEffnetDiscogs,
     TensorflowPredict2D,
+    TensorflowPredictEffnetDiscogs,
     TensorflowPredictMusiCNN,
 )
-import numpy as np
 
 
 class FeatureExtractor:
@@ -106,13 +107,28 @@ class KeyExtractor(FeatureExtractor):
             extracted_keys (Dict)
         """
         audio = self._convert_audio(audio)
-        key_temperley, *_ = self.key_extractor_temperley(audio)
-        key_krumhansl, *_ = self.key_extractor_krumhansl(audio)
-        key_edma, *_ = self.key_extractor_edma(audio)
+        key_temperley, scale_temperley, _ = self.key_extractor_temperley(audio)
+        key_krumhansl, scale_krumhansl, _ = self.key_extractor_krumhansl(audio)
+        key_edma, scale_edma, _ = self.key_extractor_edma(audio)
+
+        # Major or minor?
+        scale_counts = {"major": 0, "minor": 0}
+        scales = [scale_temperley, scale_krumhansl, scale_edma]
+
+        for scale in scales:
+            if scale in scale_counts:
+                scale_counts[scale] += 1
+
+        majority_scale = max(scale_counts, key=scale_counts.get)
+
         return {
             "key_temperley": key_temperley,
             "key_krumhansl": key_krumhansl,
             "key_edma": key_edma,
+            "scale_temperley": scale_temperley,
+            "scale_krumhansl": scale_krumhansl,
+            "scale_edma": scale_edma,
+            "scale": majority_scale,
         }
 
 
@@ -260,56 +276,122 @@ class EmotionExtractor(FeatureExtractor):
         return self._get_arousal_valence(predictions)
 
 
-class MSDMusicCNNExtractor(FeatureExtractor):
-    feature_name = "MSD-MusicCNN-Embeddings"
+class UnifiedMSDMusicCNNExtractor(FeatureExtractor):
+    """Unified class using MSD-MusicCNN model for emotion and embeddings extraction"""
+
+    feature_name = "MSD-MusicCNN-features"
 
     def __init__(self):
         super().__init__()
         self.embedding_model = TensorflowPredictMusiCNN(
             graphFilename="models/msd-musicnn-1.pb", output="model/dense/BiasAdd"
         )
-
-    def _convert_audio(self, audio):
-        return self.resampler(self.mono_mixer(audio, 2))  # returns mono_16000
-
-    def extract(self, audio):
-        """
-        extracts MSD-MusicCNN embeddings from audio track.
-        algorithm resamples to 16000, mono.
-
-        parameters:
-            audio: sampled at 44100, stereo
-
-        returns: embeddings
-        """
-        audio = self._convert_audio(audio)
-        embeddings = self.embedding_model(audio).mean(axis=0).tolist()
-        return embeddings
-
-
-class DiscogsEffnetExtractor(FeatureExtractor):
-    feature_name = "Discogs-Effnet-Embeddings"
-
-    def __init__(self):
-        super().__init__()
-        self.embedding_model = TensorflowPredictEffnetDiscogs(
-            graphFilename="models/discogs-effnet-bs64-1.pb",
-            output="PartitionedCall:1",
+        self.emotion_model = TensorflowPredict2D(
+            graphFilename="models/emomusic-msd-musicnn-2.pb", output="model/Identity"
         )
 
     def _convert_audio(self, audio):
         return self.resampler(self.mono_mixer(audio, 2))  # returns mono_16000
 
-    def extract(self, audio):
-        """
-        extracts Discogs-Effnet embeddings from audio track.
-        algorithm resamples to 16000, mono.
-
-        parameters:
-            audio: sampled at 44100, stereo
-
-        returns: embeddings
-        """
+    def extract_embeddings(self, audio) -> np.ndarray:
+        """Extract embeddings once"""
         audio = self._convert_audio(audio)
-        embeddings = self.embedding_model(audio).mean(axis=0).tolist()
-        return embeddings
+        return self.embedding_model(audio)
+
+    @staticmethod
+    def _get_arousal_valence(predictions):
+        return {"valence": float(predictions[0]), "arousal": float(predictions[1])}
+
+    def extract_emotion(self, embeddings) -> Dict[str, float]:
+        """
+        Extracts Valence and arousal from audio track based on the embeddings.
+        Returns: Valence and arousal
+        """
+        predictions = self.emotion_model(embeddings).mean(axis=0)
+        return self._get_arousal_valence(predictions)
+
+    def extract(self, audio) -> Dict[str, Any]:
+        """Unified extraction"""
+        embeddings = self.extract_embeddings(audio)
+        # Extract emotion features
+        emotion = self.extract_emotion(embeddings)
+
+        # Return both embeddings and emotion
+        return {"music-cnn-embeddings": embeddings.mean(axis=0).tolist(), **emotion}
+
+
+class UnifiedEffnetDiscogsExtractor(FeatureExtractor):
+    """Unified class using Effnet Discogs model"""
+
+    feature_name = "Effnet-Discogs-features"
+
+    def __init__(self):
+        super().__init__()
+        self.embedding_model = es.TensorflowPredictEffnetDiscogs(
+            graphFilename="models/discogs-effnet-bs64-1.pb", output="PartitionedCall:1"
+        )
+        self.genre_model = es.TensorflowPredict2D(
+            graphFilename="models/genre_discogs400-discogs-effnet-1.pb",
+            input="serving_default_model_Placeholder",
+            output="PartitionedCall:0",
+        )
+        with open("models/genre_discogs400-discogs-effnet-1.json", "r") as file:
+            self.genre_labels = json.load(file)["classes"]
+
+        self.danceability_model = es.TensorflowPredict2D(
+            graphFilename="models/danceability-discogs-effnet-1.pb",
+            output="model/Softmax",
+        )
+        with open("models/danceability-discogs-effnet-1.json", "r") as file:
+            self.danceability_labels = json.load(file)["classes"]
+
+        self.voice_model = es.TensorflowPredict2D(
+            graphFilename="models/voice_instrumental-discogs-effnet-1.pb",
+            output="model/Softmax",
+        )
+        with open("models/voice_instrumental-discogs-effnet-1.json", "r") as file:
+            self.voice_labels = json.load(file)["classes"]
+
+    def extract_embeddings(self, audio) -> np.ndarray:
+        """Extract embeddings once"""
+        audio = self._convert_audio(audio)
+        return self.embedding_model(audio)
+
+    def _convert_audio(self, audio):
+        return self.resampler(self.mono_mixer(audio, 2))  # returns mono_16000
+
+    @staticmethod
+    def _get_top_classes(predictions: np.ndarray, labels: list, num_top: int) -> list:
+        predictions = np.array(predictions)
+        top_indices = predictions.argsort()[-num_top:][::-1]
+        return [labels[i] for i in top_indices]
+
+    @staticmethod
+    def _genre_formatting(label: str) -> Tuple[str, str]:
+        if "---" in label:
+            parts = label.split("---", 1)
+            return parts[0], parts[1]
+        return label, ""
+
+    def extract(self, audio) -> Dict[str, Any]:
+        embeddings = self.extract_embeddings(audio)
+        genre_predictions = self.genre_model(embeddings).mean(axis=0)
+        genre = self._get_top_classes(genre_predictions, self.genre_labels, 1)[0]
+        main_genre, sub_genre = self._genre_formatting(genre)
+
+        vocal_instrumental_prediction = int(
+            np.round(self.voice_model(embeddings).mean(axis=0))[1]
+        )
+        vocal_instrumental = self.voice_labels[vocal_instrumental_prediction]
+
+        danceability = self.danceability_model(embeddings).mean(axis=0)[0]
+
+        embeddings = embeddings.mean(axis=0).tolist()
+
+        return {
+            "main_genre": main_genre,
+            "sub_genre": sub_genre,
+            "danceability": float(danceability),
+            "vocal-instrumental": vocal_instrumental,
+            "effnet-discogs-embeddings": embeddings,
+        }

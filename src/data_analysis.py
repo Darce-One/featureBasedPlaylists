@@ -8,6 +8,10 @@ from utils import (
     plot_genre_distribution,
     plot_key_distribution,
     plot_loudness_distribution,
+    plot_vocal_instrumental_distribution,
+    plot_major_minor_distribution,
+    analyze_key_scale_pairs,
+    plot_key_scale_distribution,
 )
 
 
@@ -31,6 +35,11 @@ def main():
     keys_temperley = []
     keys_krumhansl = []
     keys_edma = []
+    scales_temperley = []
+    scales_krumhansl = []
+    scales_edma = []
+    scales_default = []
+    vocal_instrumental = []
     loudness_values = []
     valence_arousal = []
     valence_list = []
@@ -42,45 +51,48 @@ def main():
     for track, features in data.items():
         track_names.append(track)
         audio_files.append(features["audio_file"])
+
         # Extract genres
-        if "Genre" in features:
-            genres = features["Genre"]
-            if genres:
-                genres_first.append(genres[0])
-                genres_concatenated.append("--".join(genres))
+        effnet_features = features["Effnet-Discogs-features"]
+        main_genre = effnet_features["main_genre"]
+        sub_genre = effnet_features["sub_genre"]
+        genres_first.append(main_genre)
+        genres_concatenated.append(f"{main_genre}--{sub_genre}")
 
         # Extract BPMs
-        if "Bpm" in features:
-            bpm_avg = (features["Bpm"]["bpm_re"] + features["Bpm"]["bpm_cnn"]) / 2
-            bpms.append(bpm_avg)
+        bpm_avg = (features["Bpm"]["bpm_re"] + features["Bpm"]["bpm_cnn"]) / 2
+        bpms.append(bpm_avg)
 
         # Extract Danceability
-        if "Danceability" in features:
-            danceabilities.append(features["Danceability"])
+        danceabilities.append(effnet_features["danceability"])
 
         # Extract Keys
-        if "Key" in features:
-            keys = features["Key"]
-            keys_temperley.append(keys.get("key_temperley", "Unknown"))
-            keys_krumhansl.append(keys.get("key_krumhansl", "Unknown"))
-            keys_edma.append(keys.get("key_edma", "Unknown"))
+        keys = features["Key"]
+        keys_temperley.append(keys["key_temperley"])
+        keys_krumhansl.append(keys["key_krumhansl"])
+        keys_edma.append(keys["key_edma"])
+        scales_temperley.append(keys["scale_temperley"])
+        scales_krumhansl.append(keys["scale_krumhansl"])
+        scales_edma.append(keys["scale_edma"])
+        scales_default.append(keys["scale"])
+
+        # Extract Vocal/Instrumental
+        vocal_instrumental.append(effnet_features["vocal-instrumental"])
 
         # Extract Loudness
-        if "Loudness" in features:
-            loudness_values.append(features["Loudness"])
+        loudness_values.append(features["Loudness"])
 
         # Extract Valence/Arousal
-        if "Emotion" in features:
-            emotion = features["Emotion"]
-            valence_arousal.append(
-                (emotion.get("valence", 0), emotion.get("arousal", 0))
-            )
-            valence_list.append(emotion.get("valence", 0))
-            arousal_list.append(emotion.get("arousal", 0))
+        music_cnn_features = features["MSD-MusicCNN-features"]
+        valence = music_cnn_features["valence"]
+        arousal = music_cnn_features["arousal"]
+        valence_arousal.append((valence, arousal))
+        valence_list.append(valence)
+        arousal_list.append(arousal)
 
         # Extract Embeddings
-        discogs_effnet_embeddings.append(features.get("Discogs-Effnet-Embeddings", []))
-        msd_musiccnn_embeddings.append(features.get("MSD-MusicCNN-Embeddings", []))
+        discogs_effnet_embeddings.append(effnet_features["effnet-discogs-embeddings"])
+        msd_musiccnn_embeddings.append(music_cnn_features["music-cnn-embeddings"])
 
     df = pd.DataFrame(
         {
@@ -103,12 +115,30 @@ def main():
 
     df.to_pickle("part3/data/audio_features.pkl")
 
+    plot_vocal_instrumental_distribution(vocal_instrumental)
+    plot_key_scale_distribution(
+        keys_temperley,
+        keys_krumhansl,
+        keys_edma,
+        scales_temperley,
+        scales_krumhansl,
+        scales_edma,
+    )
     plot_bpm_distribution(bpms)
     plot_danceability_distribution(danceabilities)
     plot_genre_distribution(genres_first)
     plot_key_distribution(keys_temperley, keys_krumhansl, keys_edma)
+    plot_major_minor_distribution(scales_default)
     plot_loudness_distribution(loudness_values)
     plot_emotion_distribution(valence_arousal)
+    analyze_key_scale_pairs(
+        keys_temperley,
+        keys_krumhansl,
+        keys_edma,
+        scales_temperley,
+        scales_krumhansl,
+        scales_edma,
+    )
 
 
 if __name__ == "__main__":
