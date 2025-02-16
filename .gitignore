@@ -1,6 +1,7 @@
 # file formats
 *.mp3
 *.pdf
+example_features.json
 
 # folders
 MusAV/

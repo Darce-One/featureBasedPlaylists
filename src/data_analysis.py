@@ -14,9 +14,12 @@ from utils import (
     plot_key_scale_distribution,
 )
 
+OUTPUT_PICKLE_PATH = "data/audio_features.pkl"
+INPUT_JSON_PATH = "audio_features.json"
+
 
 # Load the JSON data
-def load_data(filename="audio_features.json"):
+def load_data(filename=INPUT_JSON_PATH):
     with open(filename, "r") as file:
         data = json.load(file)
     return data
@@ -105,6 +108,8 @@ def main():
             "Key Temperley": keys_temperley,
             "Key Krumhansl": keys_krumhansl,
             "Key Edma": keys_edma,
+            "Scale": scales_default,
+            "Instrumentation": vocal_instrumental,
             "Loudness": loudness_values,
             "Valence": valence_list,
             "Arousal": arousal_list,
@@ -113,7 +118,7 @@ def main():
         }
     )
 
-    df.to_pickle("part3/data/audio_features.pkl")
+    df.to_pickle(OUTPUT_PICKLE_PATH)
 
     plot_vocal_instrumental_distribution(vocal_instrumental)
     plot_key_scale_distribution(

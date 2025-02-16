@@ -42,16 +42,74 @@ danceability_select_range = (0.0, 1.0)
 loudness_select_range = (-20.0, -4.0)
 arousal_select_range = (0.0, 9.0)
 valence_select_range = (0.0, 9.0)
+scale_select = ['major', 'minor']
+instrumentation_select = ['voice', 'instrumental']
+
+# Initial ranges and session state setup
+if "bpm_select_range" not in st.session_state:
+    st.session_state.bpm_select_range = (115.0, 125.0)
+if "danceability_select_range" not in st.session_state:
+    st.session_state.danceability_select_range = (0.6, 1.0)
+if "loudness_select_range" not in st.session_state:
+    st.session_state.loudness_select_range = (-7.0, -6.0)
+if "scale_select" not in st.session_state:
+    st.session_state.scale_select = []
+if "instrumentation_select" not in st.session_state:
+    st.session_state.instrumentation_select = []
+if "valence_select_range" not in st.session_state:
+    st.session_state.valence_select_range = (4.0, 7.0)
+if "arousal_select_range" not in st.session_state:
+    st.session_state.arousal_select_range = (4.0, 7.0)
+if "genre_select" not in st.session_state:
+    st.session_state.genre_select = []
+if "button_pressed" not in st.session_state:
+    st.session_state.button_pressed = False
+
+
+# Logic to check changes
+def check_pre_run_changes():
+    has_changes = False
+
+    # Detect changes in sliders
+    if st.session_state.bpm_select_range != bpm_select_range:
+        st.session_state.bpm_select_range = bpm_select_range
+        has_changes = True
+    if st.session_state.danceability_select_range != danceability_select_range:
+        st.session_state.danceability_select_range = danceability_select_range
+        has_changes = True
+    if st.session_state.loudness_select_range != loudness_select_range:
+        st.session_state.loudness_select_range = loudness_select_range
+        has_changes = True
+    if st.session_state.valence_select_range != valence_select_range:
+        st.session_state.valence_select_range = valence_select_range
+        has_changes = True
+    if st.session_state.arousal_select_range != arousal_select_range:
+        st.session_state.arousal_select_range = arousal_select_range
+        has_changes = True
+
+    # Detect changes in selectors
+    if st.session_state.genre_select != genre_select:
+        st.session_state.genre_select = genre_select
+        has_changes = True
+    if st.session_state.scale_select != scale_select:
+        st.session_state.scale_select = scale_select
+        has_changes = True
+    if st.session_state.instrumentation_select != instrumentation_select:
+        st.session_state.instrumentation_select = instrumentation_select
+        has_changes = True
+
+    return has_changes
+
 
 st.write("## Filter by features")
 st.write("And their appropriate ranges")
-features_float_types = ["BPM", "Danceability", "Loudness"]
-feature_select = st.multiselect("Select by features:", features_float_types)
+features_options = ["BPM", "Danceability", "Loudness", "Scale", "Instrumentation"]
+feature_select = st.multiselect("Select by features:", features_options)
 
 if "BPM" in feature_select:
     bpm_select_range = st.slider(
         "Select tracks with a bpm within range:",
-        value=[115.0, 125.0],
+        value=st.session_state.bpm_select_range,
         min_value=63.0,
         max_value=183.0,
     )
@@ -59,18 +117,28 @@ if "BPM" in feature_select:
 if "Danceability" in feature_select:
     danceability_select_range = st.slider(
         "select tracks with a danceability within range:",
+        value=st.session_state.danceability_select_range,
         min_value=0.0,
         max_value=1.0,
-        value=[0.6, 1.0],
     )
 
 if "Loudness" in feature_select:
     loudness_select_range = st.slider(
         "select tracks with a loudness within range:",
+        value=st.session_state.loudness_select_range,
         min_value=-20.0,
         max_value=-4.0,
-        value=[-7.0, -6.0],
     )
+
+if "Scale" in feature_select:
+    scale_select = st.multiselect("select scales",
+        ['major', 'minor'],
+        default=st.session_state.scale_select)
+
+if "Instrumentation" in feature_select:
+    instrumentation_select = st.multiselect("select instrumentation",
+        ['voice', 'instrumental'],
+        default=st.session_state.instrumentation_select)
 
 
 # Filter the DataFrame based on selections
@@ -87,6 +155,16 @@ filtered_audio_analysis = audio_analysis[
         )
     )
 ]
+
+if scale_select:
+    filtered_audio_analysis = filtered_audio_analysis[
+        filtered_audio_analysis["Scale"].isin(scale_select)
+    ]
+
+if instrumentation_select:
+    filtered_audio_analysis = filtered_audio_analysis[
+        filtered_audio_analysis["Instrumentation"].isin(instrumentation_select)
+    ]
 
 st.write("## Filter by genre")
 st.write("here is the distribution of genres present after initial filtering")
@@ -111,7 +189,9 @@ possible_genres = [
     "Latin",
     "Brass & Military",
 ]
-genre_select = st.multiselect("Select by genre:", possible_genres)
+genre_select = st.multiselect(
+    "Select by genre:", possible_genres, default=st.session_state.genre_select
+)
 
 
 if genre_select:
@@ -153,13 +233,13 @@ valence_select_range = st.slider(
     "select tracks with a valence within range:",
     min_value=0.0,
     max_value=9.0,
-    value=[4.0, 7.0],
+    value=st.session_state.valence_select_range,
 )
 arousal_select_range = st.slider(
     "select tracks with an arousal within range:",
     min_value=0.0,
     max_value=9.0,
-    value=[4.0, 7.0],
+    value=st.session_state.arousal_select_range,
 )
 
 filtered_audio_analysis = filtered_audio_analysis[
@@ -175,7 +255,15 @@ filtered_audio_analysis = filtered_audio_analysis[
     )
 ]
 
-if st.button("RUN"):
+# Reset the RUN button state if any pre-run filters have changed
+if check_pre_run_changes():
+    st.session_state.button_pressed = False
+
+
+mp3s = []
+# Button part!
+if st.button("RUN") or st.session_state.button_pressed:
+    st.session_state.button_pressed = True
     st.write("## 🔊 Results")
 
     # Retrieve paths from the filtered DataFrame
@@ -198,7 +286,43 @@ if st.button("RUN"):
 
         # Display audio previews for the first 10 tracks
         st.write("Audio previews for the first 10 results:")
-        for mp3 in mp3s[:10]:
+        for idx, mp3 in enumerate(mp3s[:10]):
+            st.write(f"\n {idx + 1}:")
             st.audio(mp3, format="audio/mp3", start_time=0)
     else:
         st.write("No tracks found based on the current filter criteria.")
+
+    if mp3s:
+        st.write("## Detailed Track Information")
+        if "selected_index" not in st.session_state:
+            st.session_state.selected_index = 1  # Default to the first track
+        # Create a dictionary that maps integer indices to track file paths
+        indexed_tracks = {i + 1: mp3 for i, mp3 in enumerate(mp3s[:10])}
+
+        # Allow the user to select a track by its position number
+        st.session_state.selected_index = st.selectbox(
+            "Select a track number to view detailed features:",
+            list(indexed_tracks.keys()),
+            index=st.session_state.selected_index - 1,  # Adjust for zero-based index
+        )
+
+        # Find the file path for the selected track number
+        selected_track = indexed_tracks[st.session_state.selected_index]
+
+        # Find the row in the DataFrame corresponding to the selected track
+        track_features = filtered_audio_analysis[
+            filtered_audio_analysis["Path"] == selected_track
+        ]
+
+        # Display the features of the selected track
+        if not track_features.empty:
+            st.write(
+                f"### Features for the selected track (Track #{st.session_state.selected_index}):"
+            )
+            st.write(track_features.T)  # Transpose to display features vertically
+        else:
+            st.write("Could not find the features for the selected track.")
+else:
+    st.write(
+        "No tracks are available for detailed viewing. Please hit run, or adjust the filter criteria."
+    )

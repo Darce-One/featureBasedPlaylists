@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 # Plot a histogram for genre counts
 def plot_genre_distribution(genres_first):
     genre_counts = {genre: genres_first.count(genre) for genre in set(genres_first)}
@@ -10,7 +11,7 @@ def plot_genre_distribution(genres_first):
     genres, counts = zip(*sorted_genres)
 
     plt.figure(figsize=(10, 8))
-    plt.barh(genres, counts, color='b', alpha=0.7)
+    plt.barh(genres, counts, color="b", alpha=0.7)
     plt.xlabel("Count")
     plt.ylabel("Genre")
     plt.title("Genre Distribution")
@@ -20,7 +21,10 @@ def plot_genre_distribution(genres_first):
 
 def plot_vocal_instrumental_distribution(vocal_instrumental):
     # Count the occurrence of each category
-    category_counts = {category: vocal_instrumental.count(category) for category in set(vocal_instrumental)}
+    category_counts = {
+        category: vocal_instrumental.count(category)
+        for category in set(vocal_instrumental)
+    }
     categories, counts = zip(*category_counts.items())
 
     # Plot as a bar chart
@@ -220,7 +224,7 @@ def analyze_key_scale_pairs(
 
     # Plot the results as a horizontal bar chart
     plt.figure(figsize=(10, 8))
-    plt.barh(categories_labels, categories_values, color='skyblue', edgecolor='black')
+    plt.barh(categories_labels, categories_values, color="skyblue", edgecolor="black")
     plt.xlabel("Count")
     plt.ylabel("Match Type")
     plt.title("Key-Scale Match Analysis")
