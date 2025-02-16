@@ -105,7 +105,6 @@ class AudioFeatureDatabase:
             self.save_data()
 
 
-# Example usage:
 def main():
     db = AudioFeatureDatabase(json_path=JSON_SAVE_PATH)
 
@@ -113,9 +112,6 @@ def main():
         BpmExtractor(),
         KeyExtractor(),
         LoudnessExtactor(),
-        # GenreExtractor(),
-        # DanceabilityExtractor(),
-        # EmotionExtractor(),
         UnifiedEffnetDiscogsExtractor(),
         UnifiedMSDMusicCNNExtractor(),
     ]
@@ -125,21 +121,5 @@ def main():
     db.process_dataset(feature_calculator=fc, dataset_path=DATASET_PATH)
 
 
-def test():
-    extractors = [
-        UnifiedEffnetDiscogsExtractor(),
-        UnifiedMSDMusicCNNExtractor(),
-        KeyExtractor(),
-    ]
-
-    fc = FeatureCalculator(extractors)
-
-    features = fc.extract_features(
-        "test-data/audio_chunks/audio.000/0B/0BJPGg90E6p2Ve0D8EcZGF.mp3"
-    )
-    print(features)
-
-
 if __name__ == "__main__":
     main()
-    # test()
