@@ -9,6 +9,7 @@ models/
 .ipynb_checkpoints/
 __pycache__/
 notebooks/
+graphs/
 
 # IDE
 pyrightconfig.json
