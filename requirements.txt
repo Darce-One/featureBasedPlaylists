@@ -1,8 +1,9 @@
-# python=3.11
+# python=3.10
 numpy==1.26.4
-scikit-learn==1.6.1
 essentia==2.1b6.dev1177
 essentia-tensorflow==2.1b6.dev1177
+scikit-learn==1.6.1
+matplotlib==3.10.1
 tqdm==4.67.1
 streamlit==1.42.0
 watchdog==6.0.0

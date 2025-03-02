@@ -3,7 +3,7 @@ This repository contains code to run through a given directory of mp3 files, ana
 present the data, and run an interactive web-app to build playlists based on features and similarity.
 
 ## Installation:
-Create a python environment, and run `pip install -r requirements.txt`. Code was tested with python-3.11.
+Create a python 3.10 environment in conda, and run `pip install -r requirements.txt`. Code was tested with python-3.10.
 Essentia is known to be troublesome to install on linux and windows, sorry about that.
 
 ## Use:
